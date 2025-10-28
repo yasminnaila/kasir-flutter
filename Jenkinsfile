@@ -5,6 +5,7 @@ pipeline {
         DOCKER_IMAGE = 'kasir-flutter'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         GITHUB_REPO = 'https://github.com/yasminnaila/kasir-flutter.git'
+        APP_PORT = '3000'  // Port untuk aplikasi
     }
     
     stages {
@@ -17,8 +18,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                    // Build Docker image
+                    bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    bat "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
                 }
             }
         }
@@ -28,7 +30,17 @@ pipeline {
                 script {
                     echo "Running tests..."
                     // Uncomment below if you have tests
-                    // sh 'flutter test'
+                    // bat 'flutter test'
+                }
+            }
+        }
+        
+        stage('Stop Old Container') {
+            steps {
+                script {
+                    // Stop and remove old container if exists
+                    bat 'docker stop kasir-flutter-app || exit 0'
+                    bat 'docker rm kasir-flutter-app || exit 0'
                 }
             }
         }
@@ -36,12 +48,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Stop and remove old container if exists
-                    sh 'docker stop kasir-flutter-app || true'
-                    sh 'docker rm kasir-flutter-app || true'
-                    
                     // Run new container
-                    sh "docker run -d --name kasir-flutter-app -p 8080:80 ${DOCKER_IMAGE}:latest"
+                    bat "docker run -d --name kasir-flutter-app -p ${APP_PORT}:80 ${DOCKER_IMAGE}:latest"
+                    echo "Application deployed successfully!"
+                    echo "Access at: http://localhost:${APP_PORT}"
                 }
             }
         }
@@ -49,10 +59,14 @@ pipeline {
     
     post {
         success {
-            echo 'Pipeline berhasil! 🎉'
+            echo '✅ Pipeline berhasil!'
+            echo "🚀 Aplikasi berjalan di http://localhost:${APP_PORT}"
         }
         failure {
-            echo 'Pipeline gagal! ❌'
+            echo '❌ Pipeline gagal!'
+        }
+        always {
+            echo "Build #${env.BUILD_NUMBER} selesai"
         }
     }
 }
